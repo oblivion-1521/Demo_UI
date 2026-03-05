@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Fatigue System Demo</title>
+    <!-- 引入 ECharts 画图库（直接通过网络加载，无需安装） -->
+    <script src="https://cdn.jsdelivr.net/npm/echarts@5.4.3/dist/echarts.min.js"></script>
+    <style>
+        /* 简单设置一下背景颜色和波形图容器的大小 */
+        body { background-color: #F7F7F5; }
+        #chart-container { width: 800px; height: 300px; margin: 50px auto; background: white; border-radius: 10px; box-shadow: 0 4px 8px rgba(0,0,0,0.1); }
+    </style>
+</head>
+<body>
+
+    <!-- 这是一个空盒子，用来装波形图 -->
+    <div id="chart-container"></div>
+
+    <script>
+        // 【第一步：初始化图表】=================================
+        // 类似 Python 里的实例化对象： chart = ECharts(div)
+        var chartDom = document.getElementById('chart-container');
+        var myChart = echarts.init(chartDom);
+
+        // 准备一个空数组，用来存最近的 100 个数据点（类似 Python 的 list）
+        var dataQueue =[];
+        for (let i = 0; i < 100; i++) {
+            dataQueue.push(0); // 初始填满 0
+        }
+
+        // 定义图表长什么样（颜色、线条粗细、坐标轴）
+        var option = {
+            animation: false, // 关闭默认动画，让实时滚动更流畅
+            xAxis: { type: 'category', show: false }, // 隐藏 X 轴
+            yAxis: { type: 'value', min: -0.5, max: 0 }, // Y 轴固定范围，防止图像乱跳
+            series:[{
+                type: 'line',         // 画折线图
+                data: dataQueue,      // 绑定的数据源就是我们上面建的 list
+                showSymbol: false,    // 不显示折线上的小圆点
+                lineStyle: { color: '#90202e', width: 2 } // 类似参考图的暗红色线条
+            }]
+        };
+        myChart.setOption(option);
+
+        // 【第二步：向后端要数据】=================================
+        // async function 类似 Python 的 async def
+        async function fetchAndUpdateData() {
+            try {
+                // 1. 发起请求，向后端的 /api/get_data 接口要数据 (类似 Python 的 requests.get)
+                let response = await fetch('/api/get_data');
+                let result = await response.json(); // 把返回的数据解析成 JSON
+                
+                // 2. 取出后端传来的 fake_voltage 的值
+                let newValue = result.value;
+
+                // 3. 核心逻辑：把新数据塞进数组末尾，把最老的数据踢出数组前端
+                dataQueue.push(newValue);  // 类似 Python 的 list.append()
+                dataQueue.shift();         // 类似 Python 的 list.pop(0)
+
+                // 4. 告诉图表：数据更新了，重新画图吧
+                myChart.setOption({
+                    series:[{ data: dataQueue }]
+                });
+
+            } catch (error) {
+                console.error("获取数据失败:", error);
+            }
+        }
+
+        // 【第三步：设置定时器】=================================
+        // 每隔 100 毫秒（0.1秒），自动执行一次 fetchAndUpdateData 函数
+        setInterval(fetchAndUpdateData, 100);
+
+    </script>
+</body>
+</html>
