@@ -1,36 +1,46 @@
 from fastapi import FastAPI
 from fastapi.responses import HTMLResponse
-import random
-import math
-import time
 import pandas as pd
 
 app = FastAPI()
 
-# --- 新增：加载数据并初始化指针 ---
-# 在服务器启动时读取文件（不要在接口函数里读取，否则会极慢）
+# 1. 启动时读取数据
 df = pd.read_csv('data.csv')
-# 假设你的 CSV 第一列是数据，将其转化为 list 方便索引
 data_list = df.iloc[:, 1].tolist() 
-# 定义一个全局变量作为“指针”，记录当前读到哪一行了
-pointer = 0
 
-# 1. 网页路由：当你在浏览器输入网址时，返回 index.html 文件的内容
+pointer = 0         # 用来遍历波形数据的指针
+request_counter = 0 # 用来计算时间的计数器（每0.1秒加1）
+
+# 网页路由：当在浏览器输入网址时，返回 index.html 文件的内容
 @app.get("/")
 async def get_webpage():
     with open("index.html", "r", encoding="utf-8") as f:
         html_content = f.read()
     return HTMLResponse(content=html_content)
 
-# 2. 数据接口：前端每隔几百毫秒就会偷偷调用一次这个接口
+# 数据接口：前端每隔几百毫秒就会偷偷调用一次这个接口
 @app.get("/api/get_data")
 async def get_sensor_data():
-    global pointer # 声明我们要修改全局变量 pointer
+    global pointer, request_counter
     
-    # 获取当前数据
+    # 1. 获取波形数据并移动指针
     val = float(data_list[pointer])
-    
-    # 移动指针，如果读到末尾，则循环回到开头
     pointer = (pointer + 1) % len(data_list)
     
-    return {"value": val}
+    # 2. 计算当前属于哪个疲劳阶段 (0-300: 正常, 300-400: 中度, 400-600: 重度)
+    cycle_position = request_counter % 600
+    
+    if cycle_position < 300:       # 前 30 秒
+        fatigue_level = 0
+    elif cycle_position < 400:     # 中间 10 秒
+        fatigue_level = 1
+    else:                          # 后 20 秒
+        fatigue_level = 2
+        
+    request_counter += 1
+    
+    # 3. 把波形数值和疲劳状态一起打包发给前端
+    return {
+        "value": val,
+        "fatigue": fatigue_level
+    }
