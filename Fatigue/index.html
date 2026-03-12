@@ -24,7 +24,11 @@
         * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', -apple-system, BlinkMacSystemFont, Roboto, sans-serif; }
         
         body { background-color: var(--bg-color); color: var(--text-main); display: flex; justify-content: center; padding: 30px; }
-        .app-container { width: 100%; max-width: 1050px; } /* 稍微收紧宽度，让排版更紧凑 */
+        
+        /* 指定宽度 */
+        /* .app-container { width: 100%; max-width: 1250px; }  */
+        /* 这里直接用百分比 */
+        .app-container { width: 100%; max-width: 95%; }
 
         /* ========== 顶部标题 ========== */
         header { display: flex; justify-content: space-between; align-items: center; padding-bottom: 30px; border-bottom: 1px solid var(--border-color); margin-bottom: 30px; color: #999; }
@@ -35,10 +39,19 @@
         
         /* 头像区 (去掉沉重的灰底，改成透明干净的排版) */
         .profile-area { width: 150px; display: flex; flex-direction: column; align-items: center; justify-content: flex-end; padding-bottom: 10px;}
-        .avatar-icon { font-size: 110px; color: #D0D2CC; margin-bottom: 15px; }
+        /* 原来是icon，现在改为图片
+        /* .avatar-icon { font-size: 110px; color: #D0D2CC; margin-bottom: 15px; } */
+        .custom-avatar-img { 
+            width: 110px;        /* 图片宽度 */
+            height: 110px;       /* 图片高度 */
+            object-fit: cover;   /* 保证图片不变形 */
+            border-radius: 50%;  /* 如果你的图片是方的，这行代码会把它裁成正圆形 */
+            margin-bottom: 15px; 
+            border: 3px solid var(--border-color); /* 给图片加个灰色的边框，显得高级 */
+        }
         .profile-area h2 { font-size: 24px; font-weight: 400; color: var(--text-main); }
 
-        /* 右侧 3 列卡片 */
+        /* 右侧 4 列卡片 (原来是 3 列，现在自动适应) */
         .cards-area { flex: 1; display: flex; gap: 20px; }
         .col { flex: 1; display: flex; flex-direction: column; gap: 20px; }
         
@@ -57,10 +70,22 @@
         .card-icon { font-size: 28px; color: #9A9C96; margin-right: 20px; width: 30px; text-align: center; }
         .card-info { display: flex; flex-direction: column; }
         .card-label { font-size: 11px; color: var(--text-label); text-transform: uppercase; letter-spacing: 1.2px; margin-bottom: 4px; font-weight: 600; }
+        
+        /* 这里的 card-value 就是用来显示具体数字（比如 75）的样式 */
         .card-value { font-size: 28px; font-weight: 400; color: var(--text-main); }
+        /* 为了让 bpm 或 /min 这种单位字号小一点，额外加一个样式 */
+        .unit-text { font-size: 14px; color: var(--text-label); margin-left: 4px; }
 
         /* 大脑特有样式 */
-        .brain-icon { font-size: 80px; color: #C4C6C0; margin-bottom: 15px; } /* 弱化大脑厚重感 */
+        /* .brain-icon { font-size: 80px; color: #C4C6C0; margin-bottom: 15px; } 弱化大脑厚重感 */
+        .custom-brain-img { 
+            width: 90px;       /* 控制大脑图片大小 */
+            height: 90px;
+            object-fit: contain; /* 保持图片比例 */
+            margin-bottom: 15px; 
+            /* 过渡动画：让后面JS加发光颜色时，有个平滑渐变的过程 */
+            transition: filter 0.5s ease; 
+        }
         .status-value { font-size: 28px; font-weight: 400; margin: 8px 0; display: flex; align-items: center; justify-content: center; gap: 8px;}
         .status-desc { font-size: 13px; color: var(--text-label); }
 
@@ -76,7 +101,7 @@
             box-shadow: 0 2px 15px rgba(0,0,0,0.02); border: 1px solid var(--border-color);
             position: relative; /* 为警告图标做绝对定位准备 */
         }
-        #chart-container { width: 100%; height: 280px; }
+        #chart-container { width: 100%; height: 450px; }
         
         /* 隐藏的图表警告小三角 (通过 JS 控制显示) */
         #chart-warning {
@@ -90,9 +115,7 @@
     </style>
 </head>
 
-
 <!-- 这是 HTML 的主体部分，所有可见内容都在这里面  -->
-
 <body>
 
 <div class="app-container">
@@ -105,12 +128,16 @@
     <div class="top-section">
         <!-- 1. 头像区 -->
         <div class="profile-area">
-            <i class="fa-solid fa-user-astronaut avatar-icon"></i> <!-- 换了个更有设计感的头像图标 -->
+            <!-- 把i标签注释掉，换成img标签 -->
+            <!-- <i class="fa-solid fa-user-astronaut avatar-icon"></i> 换了个更有设计感的头像图标 -->
+            <img src="/static/my_avatar.png" alt="Avatar" class="custom-avatar-img" id="ui-avatar">
             <h2>Joyce</h2>
         </div>
 
-        <!-- 2. 数据卡片区 -->
+        <!-- 2. 数据卡片区 (一共4列了) -->
         <div class="cards-area">
+            
+            <!-- 第 1 列：用户 和 时间 -->
             <div class="col">
                 <div class="card">
                     <i class="fa-regular fa-user card-icon"></i>
@@ -120,18 +147,22 @@
                     </div>
                 </div>
                 <div class="card">
-                    <i class="fa-regular fa-calendar card-icon"></i>
+                    <i class="fa-regular fa-clock card-icon"></i> <!-- 图标换成时钟了 -->
                     <div class="card-info">
-                        <span class="card-label">DATE</span>
-                        <span class="card-value">07/27</span>
+                        <span class="card-label">TIME</span>
+                        <!-- 【新手注意】id="ui-time" 是一个“身份证号”。
+                             后面我们在 JS 代码里，就能通过这个 id 找到这个位置，然后把里面的数字实时替换掉。 -->
+                        <span class="card-value" id="ui-time">--:--:--</span>
                     </div>
                 </div>
             </div>
 
-            <!-- 核心：疲劳状态评估 -->
+            <!-- 第 2 列：核心的疲劳状态评估 (不变) -->
             <div class="col">
                 <div class="card card-tall">
-                    <i class="fa-solid fa-brain brain-icon" id="ui-brain-icon"></i>
+                    <!-- 这里同样修改 -->
+                    <!-- <i class="fa-solid fa-brain brain-icon" id="ui-brain-icon"></i> -->
+                    <img src="/static/my_brain.png" alt="Brain" class="custom-brain-img" id="ui-brain-img">
                     <span class="card-label">BRAIN EVALUATION</span>
                     <div class="status-value text-green" id="ui-fatigue-status">
                         <span>Non-Fatigue</span>
@@ -141,11 +172,40 @@
                 </div>
             </div>
 
+            <!-- 第 3 列：新增的心率(HR)和呼吸率(RR) -->
+            <div class="col">
+                <div class="card">
+                    <!-- fa-heart-pulse 是心电图图标，加了一点红色点缀 -->
+                    <i class="fa-solid fa-heart-pulse card-icon" style="color: #A73A48;"></i>
+                    <div class="card-info">
+                        <span class="card-label">HEART RATE</span>
+                        <span class="card-value">
+                            <!-- JS 会修改 id="ui-hr" 里面的值 -->
+                            <span id="ui-hr">--</span> 
+                            <span class="unit-text">bpm</span> <!-- 单位: 每分钟心跳次数 -->
+                        </span>
+                    </div>
+                </div>
+                <div class="card">
+                    <!-- fa-lungs 是肺部的图标，代表呼吸 -->
+                    <i class="fa-solid fa-lungs card-icon" style="color: #66A590;"></i>
+                    <div class="card-info">
+                        <span class="card-label">RESP RATE</span>
+                        <span class="card-value">
+                            <!-- JS 会修改 id="ui-rr" 里面的值 -->
+                            <span id="ui-rr">--</span>
+                            <span class="unit-text">/min</span> <!-- 单位: 呼吸次数/分钟 -->
+                        </span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 第 4 列：温度和电池 (按要求保持固定数值) -->
             <div class="col">
                 <div class="card">
                     <i class="fa-solid fa-temperature-half card-icon"></i>
                     <div class="card-info">
-                        <span class="card-label">TEMP</span>
+                        <span class="card-label">AMBIENT TEMP</span>
                         <span class="card-value">27°C</span> <!-- 这里按要求设为定值 -->
                     </div>
                 </div>
@@ -157,6 +217,7 @@
                     </div>
                 </div>
             </div>
+            
         </div>
     </div>
 
@@ -210,10 +271,20 @@
     myChart.setOption(option);
 
     // ========== 2. DOM 元素预获取 ==========
+    // 【新手注意】document.getElementById 的意思就是：在整个 HTML 文档里，
+    // 把带有对应 ID 名字（也就是上文 html 里的标签）的那个“盒子”抓过来，存进一个变量里。
+    // 这样等下我们直接修改这个变量，网页上的字就会变。
+    
+    // 疲劳状态相关的元素
     const uiStatus = document.getElementById('ui-fatigue-status');
     const uiDesc = document.getElementById('ui-fatigue-desc');
     const uiWarning = document.getElementById('chart-warning');
-    const uiBrain = document.getElementById('ui-brain-icon');
+    const uiBrain = document.getElementById('ui-brain-img');
+
+    // 新增：数值展示相关的元素
+    const uiTime = document.getElementById('ui-time'); // 抓取显示时间的盒子
+    const uiHr = document.getElementById('ui-hr');     // 抓取显示心率的盒子
+    const uiRr = document.getElementById('ui-rr');     // 抓取显示呼吸率的盒子
 
     // 记录上一次的状态，防止 UI 重复渲染闪烁
     let lastFatigue = -1; 
@@ -223,14 +294,21 @@
         try {
             // 发起请求，向后端的 /api/get_data 接口要数据
             let response = await fetch('/api/get_data');
-            let result = await response.json();     // 把返回的数据解析成 JS 
+            let result = await response.json();     // 把返回的数据解析成 JS 字典（对象）
             
             // 1. 更新波形图
             dataQueue.push(result.value);
             dataQueue.shift();
             myChart.setOption({ series: [{ data: dataQueue }] });
 
-            // 2. 更新疲劳状态 UI (0=正常, 1=中度, 2=重度)
+            // 2. 更新纯数值显示 (心率、呼吸率、时间)
+            // 【新手注意】innerText 的意思是“替换这个标签内部的文字”。
+            // 我们把后端传过来的数据（比如 result.heart_rate）塞进 HTML 盒子里去。
+            uiTime.innerText = result.time;
+            uiHr.innerText = result.heart_rate;
+            uiRr.innerText = result.resp_rate;
+
+            // 3. 更新疲劳状态 UI (0=正常, 1=中度, 2=重度)
             let currentFatigue = result.fatigue;
             
             // 只有当状态发生变化时，才去修改 DOM（提高性能）
@@ -241,14 +319,18 @@
                     uiStatus.innerHTML = `<span>Non-Fatigue</span> <i class="fa-solid fa-circle-check" style="font-size: 20px;"></i>`;
                     uiStatus.className = 'status-value text-green';
                     uiDesc.innerText = 'Status: Normal';
-                    uiBrain.style.color = '#C4C6C0'; // 大脑恢复灰色
+                    // 正常状态没有发光
+                    uiBrain.style.filter = 'none'; 
                     uiWarning.style.display = 'none'; // 隐藏图表上的小三角
                 } 
                 else if (currentFatigue === 1) {
                     uiStatus.innerHTML = `<span>Mild Fatigue</span> <i class="fa-solid fa-triangle-exclamation" style="font-size: 20px;"></i>`;
                     uiStatus.className = 'status-value text-orange';
                     uiDesc.innerText = 'Status: Warning';
-                    uiBrain.style.color = '#E9B98A'; // 大脑变成橙色警示
+                    // 橙色发光效果
+                    // 叠加两层 drop-shadow 可以让光晕更“厚实”且颜色更浓艳
+                    // 中度使用较明亮的金橙色 (#FFD700 和 #FF8C00 叠加)
+                    uiBrain.style.filter = "drop-shadow(0px 0px 8px #FFD700) drop-shadow(0px 0px 20px #FF8C00)"; 
                     uiWarning.style.display = 'block'; 
                     uiWarning.className = 'fa-solid fa-triangle-exclamation text-orange'; // 波形区出现橙色三角
                 } 
@@ -256,7 +338,9 @@
                     uiStatus.innerHTML = `<span>Severe Fatigue</span> <i class="fa-solid fa-circle-exclamation" style="font-size: 20px;"></i>`;
                     uiStatus.className = 'status-value text-red';
                     uiDesc.innerText = 'Status: Critical Danger';
-                    uiBrain.style.color = '#A73A48'; // 大脑变成红色危险
+                    // 修复了 uiBrainImg 的拼写错误(应为 uiBrain) 
+                    // 重度使用纯红与深红色的叠加产生强烈的危险感 (#FF0000 和 #8B0000)
+                    uiBrain.style.filter = "drop-shadow(0px 0px 10px #FF0000) drop-shadow(0px 0px 25px #8B0000)"; 
                     uiWarning.style.display = 'block';
                     uiWarning.className = 'fa-solid fa-triangle-exclamation text-red'; // 波形区出现红色三角
                 }
