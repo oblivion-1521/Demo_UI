@@ -52,11 +52,11 @@ async def get_sensor_data():
     pointer = (pointer + 1) % len(data_list)
     
     # 2. 计算当前属于哪个疲劳阶段 (0-300: 正常, 300-400: 中度, 400-600: 重度)
-    cycle_position = request_counter % 600
+    cycle_position = request_counter % 90
     
-    if cycle_position < 300:       # 前 30 秒
+    if cycle_position < 30:       # 前 30 秒
         fatigue_level = 0
-    elif cycle_position < 400:     # 中间 10 秒
+    elif cycle_position < 60:     # 中间 10 秒
         fatigue_level = 1
     else:                          # 后 20 秒
         fatigue_level = 2

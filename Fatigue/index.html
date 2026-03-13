@@ -41,10 +41,10 @@
             margin-bottom: 30px;
         }
         .nav-left { display: flex; align-items: center; gap: 15px; }
-        .nav-logo { width: 50px; height: auto; object-fit: contain; } /* 顶部导航栏的新脑图标 */
+        .nav-logo { width: 60px; height: auto; object-fit: contain; } /* 顶部导航栏的新脑图标 */
         .nav-titles { display: flex; flex-direction: column; gap: 2px; }
-        .nav-titles h1 { font-size: 22px; font-weight: 500; letter-spacing: 1px; color: #E0E2E5; margin: 0;}
-        .nav-titles span { font-size: 12px; color: #8A94A0; letter-spacing: 0.5px; } /* 只显示日期的部分 */
+        .nav-titles h1 { font-size: 26px; font-weight: 500; letter-spacing: 1px; color: #E0E2E5; margin: 0;}
+        .nav-titles span { font-size: 16px; color: #8A94A0; letter-spacing: 0.5px; } /* 只显示日期的部分 */
         .nav-right { font-size: 24px; color: #8A94A0; cursor: pointer; }
 
         /* ========== 2. 核心大网格布局 (Main Grid) ========== */
@@ -58,7 +58,7 @@
             /* 强制底线为0，允许格子压扁 */
             grid-template-rows: minmax(0, 3.5fr) minmax(0, 6.5fr); 
             /* 给网格加一个总高度(视窗高度的85%)，让上面的比例分配生效 */
-            height: 85vh; 
+            height: 80vh; 
             min-height: 750px;
             grid-gap: 20px;    /* 每个大格子之间的缝隙大小 */
             padding: 0 30px;
@@ -138,11 +138,11 @@
         .card-tall { flex: 1; } /* 让卡片在竖向拉伸填满空间 */
         .card-icon { font-size: 24px; color: #9A9C96; width: 35px; text-align: left; }
         .card-info { display: flex; flex-direction: column; justify-content: center; }
-        .card-label { font-size: 10px; color: var(--text-label); text-transform: uppercase; letter-spacing: 1px; margin-bottom: 4px; font-weight: 600; }
+        .card-label { font-size: 16px; color: var(--text-label); text-transform: uppercase; letter-spacing: 1px; margin-bottom: 4px; font-weight: 600; }
         
         /* 这里的 card-value 用来显示具体数字（比如 75） */
-        .card-value { font-size: 24px; font-weight: 400; color: var(--text-main); }
-        .unit-text { font-size: 13px; color: var(--text-label); margin-left: 2px; }
+        .card-value { font-size: 26px; font-weight: 400; color: var(--text-main); }
+        .unit-text { font-size: 15px; color: var(--text-label); margin-left: 2px; }
 
         /* ---------------- 下半部分 1/2 Blocks: 波形图 与 大脑评估 ---------------- */
         .bottom-left-block {
@@ -388,7 +388,7 @@
 
                 if (currentFatigue === 0) {
                     // 状态 0: 正常
-                    uiStatus.innerHTML = `<span>Non-Fatigue</span>`;
+                    uiStatus.innerHTML = `<span>Low Fatigue</span>`;
                     uiStatus.className = 'status-value text-green';
                     uiDesc.innerText = 'Status: Normal';
                     
@@ -401,28 +401,28 @@
                 } 
                 else if (currentFatigue === 1) {
                     // 状态 1: 中度疲劳
-                    uiStatus.innerHTML = `<span>Mild Fatigue</span> <i class="fa-solid fa-triangle-exclamation" style="font-size: 24px;"></i>`;
+                    uiStatus.innerHTML = `<span>Medium Fatigue</span> <i class="fa-solid fa-triangle-exclamation" style="font-size: 24px;"></i>`;
                     uiStatus.className = 'status-value text-orange';
                     uiDesc.innerText = 'Status: Warning';
                     
                     // 【新功能】替换图片为中度疲劳的脑
                     uiBrain.src = '/static/my_brain_1.png'; 
                     // 叠加金橙色阴影光晕，让它更炫酷 (如果不想要光晕可以把这行删掉)
-                    uiBrain.style.filter = "drop-shadow(0px 0px 10px #FFD700) drop-shadow(0px 0px 20px #FF8C00)"; 
+                    // uiBrain.style.filter = "drop-shadow(0px 0px 10px #FFD700) drop-shadow(0px 0px 20px #FF8C00)"; 
                     
                     uiWarning.style.display = 'block'; 
                     uiWarning.className = 'fa-solid fa-triangle-exclamation text-orange'; // 橙色三角
                 } 
                 else if (currentFatigue === 2) {
                     // 状态 2: 重度疲劳
-                    uiStatus.innerHTML = `<span>Severe Fatigue</span> <i class="fa-solid fa-circle-exclamation" style="font-size: 24px;"></i>`;
+                    uiStatus.innerHTML = `<span>High Fatigue</span> <i class="fa-solid fa-circle-exclamation" style="font-size: 24px;"></i>`;
                     uiStatus.className = 'status-value text-red';
                     uiDesc.innerText = 'Status: Critical Danger';
                     
                     // 【新功能】替换图片为重度疲劳的脑
                     uiBrain.src = '/static/my_brain_2.png'; 
                     // 叠加危险红色阴影光晕
-                    uiBrain.style.filter = "drop-shadow(0px 0px 15px #FF0000) drop-shadow(0px 0px 30px #8B0000)"; 
+                    // uiBrain.style.filter = "drop-shadow(0px 0px 15px #FF0000) drop-shadow(0px 0px 30px #8B0000)"; 
                     
                     uiWarning.style.display = 'block';
                     uiWarning.className = 'fa-solid fa-triangle-exclamation text-red'; // 红色三角
