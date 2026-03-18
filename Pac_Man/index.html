@@ -49,11 +49,11 @@
 <body>
 
     <div id="ui-layer">
-        <div class="trial-text" id="trial-display">Trial 1 / 10</div>
+        <div class="trial-text" id="trial-display">Trial 1 / 5</div>
         <div class="prompt-text" id="prompt-display">等待游戏开始...</div>
     </div>
     
-    <div id="success-msg" class="success-text">🎉 通关成功！</div>
+    <div id="success-msg" class="success-text">🎉 本轮通关成功！</div>
 
     <canvas id="gameCanvas" width="1000" height="700"></canvas>
 
@@ -66,54 +66,71 @@
     const DOT_RADIUS = 18;
     const HOLD_TIME_MS = 2000; 
     
-    const DART_TIME = 200;   // 冲刺吃豆的时间 (ms)
-    const RETURN_TIME = 250; // 拉回画布中心的时间 (ms)
+    const DART_TIME = 200; 
+    const RETURN_TIME = 250; 
 
-    // 画布中心点
     const CX = canvas.width / 2;
     const CY = canvas.height / 2;
 
     let state = {
         trial: 1,
-        maxTrials: 10,
-        pathLogic:[], // 存储豆子的逻辑坐标（虚拟网格位置）
-        currentDotIdx: 1, // 当前需要吃的豆子索引
-        pLogic: { x: 0, y: 0 }, // 吃豆人的逻辑坐标
-        cam: { x: 0, y: 0 },    // 摄像机的逻辑坐标
-        direction: 0,           // 吃豆人朝向
-        status: 'IDLE',         // IDLE, DARTING(冲刺), HOLDING(弹窗倒计时), RETURNING(拉回), LEVEL_COMPLETE
+        maxTrials: 5, //[修改] 这里改为总共5轮
+        pathLogic:[], 
+        currentDotIdx: 1, 
+        pLogic: { x: 0, y: 0 }, 
+        cam: { x: 0, y: 0 },    
+        direction: 0,           
+        status: 'IDLE',         
         animStart: 0,
         currentInput: null
     };
 
-    // WebSocket 连接
-    const ws = new WebSocket(`ws://${location.host}/ws`);
-    ws.onmessage = function(event) {
-        state.currentInput = parseInt(event.data);
-        checkInput();
-    };
+    //[修复] 建立 WebSocket 并增加断线重连逻辑，防止 WSL 环境中长时间挂机导致默默掉线
+    let ws;
+    function connectWebSocket() {
+        ws = new WebSocket(`ws://${location.host}/ws`);
+        ws.onmessage = function(event) {
+            state.currentInput = parseInt(event.data);
+            
+            if (state.status === 'IDLE') {
+                checkInput();
+            } 
+            else if (state.status === 'HOLDING') {
+                let targetDot = state.pathLogic[state.currentDotIdx];
+                if (state.currentInput !== targetDot.num) {
+                    state.status = 'IDLE'; 
+                }
+            }
+        };
+        ws.onclose = function() {
+            setTimeout(connectWebSocket, 1000); // 断开后自动1秒重连
+        };
+    }
+    connectWebSocket();
 
-    // 初始化关卡 (生成1~2个弯折的路径)
     function initLevel() {
         state.pathLogic =[];
-        // 虚拟起始点 (吃豆人的出生位置，不画豆子)
         state.pathLogic.push({x: 0, y: 0, num: 0, isHold: false});
         
-        // 随机 1 到 2 个弯折
-        let numBends = Math.floor(Math.random() * 2) + 1; 
+        let numBends = Math.floor(Math.random() * 2) + 1; // 随机 1 到 2 次拐弯 (对应 2 或 3 个线段)
         let segments =[];
+        
+        // 【修改部分开始】缩减每段生成的豆子数量，控制总数为 5~6 个
         if (numBends === 1) {
-            segments =[Math.floor(Math.random()*2)+4, Math.floor(Math.random()*2)+4]; // 两段直线
+            // 2 个线段：第一段固定生成 3 个，第二段生成 2 到 3 个（总计 5~6 个）
+            segments =[3, Math.floor(Math.random() * 2) + 2];
         } else {
-            segments =[Math.floor(Math.random()*2)+3, Math.floor(Math.random()*2)+3, Math.floor(Math.random()*2)+3]; // 三段直线
+            // 3 个线段：前两段固定生成 2 个，第三段生成 1 到 2 个（总计 5~6 个）
+            segments =[2, 2, Math.floor(Math.random() * 2) + 1]; 
         }
+        // 【修改部分结束】
 
         let currX = 0, currY = 0;
         let dirs =[
             {dx: 1, dy: 0}, {dx: 0, dy: 1}, 
             {dx: -1, dy: 0}, {dx: 0, dy: -1}
         ];
-        let dirIdx = Math.floor(Math.random() * 4); // 随机初始方向
+        let dirIdx = Math.floor(Math.random() * 4); 
 
         let lastNum = -1;
         for(let i = 0; i < segments.length; i++) {
@@ -124,18 +141,17 @@
                 let num;
                 do {
                     num = Math.floor(Math.random() * 10) + 1;
-                } while (num === lastNum);
+                } while (num === lastNum); // 确保相邻豆子数字不重复
                 lastNum = num;
                 
                 state.pathLogic.push({ x: currX, y: currY, num: num, isHold: (num >= 8) });
             }
-            // 每次画完一段，90度转弯 (+1顺时针 或 +3逆时针，保证不走回头路相交)
+            // 随机左转或右转 (加 1 或 3 等效于 90 度和 270 度转向)
             let turn = (Math.random() < 0.5) ? 1 : 3;
             dirIdx = (dirIdx + turn) % 4;
         }
 
-        // 初始化状态
-        state.currentDotIdx = 1; // 目标是第一个真实的豆子
+        state.currentDotIdx = 1; 
         state.pLogic = {x: 0, y: 0};
         state.cam = {x: 0, y: 0};
         state.status = 'IDLE';
@@ -143,6 +159,12 @@
         
         document.getElementById('trial-display').innerText = `Trial ${state.trial} / ${state.maxTrials}`;
         updatePrompt();
+
+        if (state.currentInput !== null && state.currentDotIdx < state.pathLogic.length) {
+            if (state.currentInput === state.pathLogic[state.currentDotIdx].num) {
+                checkInput();
+            }
+        }
     }
 
     function updateDirection() {
@@ -158,9 +180,13 @@
         let targetDot = state.pathLogic[state.currentDotIdx];
         
         if (state.currentInput === targetDot.num) {
-            // 输入正确，触发冲刺状态
-            state.status = 'DARTING';
-            state.animStart = Date.now();
+            if (targetDot.isHold) {
+                state.status = 'HOLDING';
+                state.animStart = Date.now();
+            } else {
+                state.status = 'DARTING';
+                state.animStart = Date.now();
+            }
         }
     }
 
@@ -168,37 +194,39 @@
         if(state.currentDotIdx < state.pathLogic.length) {
             let n = state.pathLogic[state.currentDotIdx].num;
             let type = state.pathLogic[state.currentDotIdx].isHold ? "需保持2秒" : "瞬间触发";
-            document.getElementById('prompt-display').innerText = `现在请比手势: [ ${n} ]  (${type})`;
+            document.getElementById('prompt-display').innerText = `现在请比手势:[ ${n} ]  (${type})`;
         }
     }
 
-    // 核心渲染循环
     function draw() {
         ctx.clearRect(0, 0, canvas.width, canvas.height);
 
         let targetDot = state.pathLogic[state.currentDotIdx];
         let prevDot = state.pathLogic[state.currentDotIdx - 1];
 
-        // --- 状态机动画逻辑 ---
-        if (state.status === 'DARTING') {
-            // 吃豆人从旁边冲向豆子
+        if (state.status === 'HOLDING') {
+            state.pLogic.x = prevDot.x;
+            state.pLogic.y = prevDot.y;
+
+            let elapsed = Date.now() - state.animStart;
+            let p = elapsed / HOLD_TIME_MS;
+            
+            if (p >= 1) {
+                state.status = 'DARTING';
+                state.animStart = Date.now();
+            }
+        }
+        else if (state.status === 'DARTING') {
             let p = (Date.now() - state.animStart) / DART_TIME;
             if (p >= 1) {
                 p = 1;
-                if (targetDot.isHold) {
-                    state.status = 'HOLDING';
-                    state.animStart = Date.now();
-                } else {
-                    state.status = 'RETURNING';
-                    state.animStart = Date.now();
-                }
+                state.status = 'RETURNING';
+                state.animStart = Date.now();
             }
-            // 摄像机不动，吃豆人坐标插值
             state.pLogic.x = prevDot.x + (targetDot.x - prevDot.x) * p;
             state.pLogic.y = prevDot.y + (targetDot.y - prevDot.y) * p;
         } 
         else if (state.status === 'RETURNING') {
-            // 吃完豆子，将整个画面（摄像机）拉回，实现豆子相对移动
             let p = (Date.now() - state.animStart) / RETURN_TIME;
             if (p >= 1) {
                 p = 1;
@@ -207,35 +235,44 @@
                     state.status = 'LEVEL_COMPLETE';
                     document.getElementById('prompt-display').innerText = "";
                     let msg = document.getElementById('success-msg');
-                    msg.style.display = 'block';
-                    setTimeout(() => {
-                        msg.style.display = 'none';
-                        state.trial++;
-                        initLevel();
-                    }, 2000);
+                    
+                    // [修改] 如果全部通关完成，展示最终胜利并停止游戏
+                    if (state.trial >= state.maxTrials) {
+                        msg.innerText = "🏆 恭喜通关所有挑战！";
+                        msg.style.display = 'block';
+                    } else {
+                        msg.innerText = "🎉 本轮通关成功！";
+                        msg.style.display = 'block';
+                        setTimeout(() => {
+                            msg.style.display = 'none';
+                            state.trial++;
+                            initLevel();
+                        }, 2000);
+                    }
                 } else {
                     state.status = 'IDLE';
                     updateDirection();
                     updatePrompt();
-                    checkInput(); // 如果连续正确，直接进入下一循环
+                    
+                    if (state.currentInput === state.pathLogic[state.currentDotIdx].num) {
+                        checkInput(); 
+                    }
                 }
             }
-            // 吃豆人逻辑坐标停在被吃的豆子处，摄像机插值移动过去（相对效果就是拉回中心）
             state.pLogic.x = targetDot.x;
             state.pLogic.y = targetDot.y;
             state.cam.x = prevDot.x + (targetDot.x - prevDot.x) * p;
             state.cam.y = prevDot.y + (targetDot.y - prevDot.y) * p;
         }
 
-        // --- 绘制豆子 ---
-        // 删除了连线，且只绘制还未被完全拉回的豆子
-        let startIdx = (state.status === 'RETURNING') ? state.currentDotIdx + 1 : state.currentDotIdx;
-        if (state.status === 'HOLDING') startIdx = state.currentDotIdx + 1; // 弹窗期间，脚下的豆子已经被遮住
+        let startIdx = state.currentDotIdx;
+        if (state.status === 'RETURNING') {
+            startIdx = state.currentDotIdx + 1; 
+        }
 
         for (let i = startIdx; i < state.pathLogic.length; i++) {
             let dot = state.pathLogic[i];
             
-            // 屏幕坐标 = 逻辑坐标 - 摄像机坐标 + 屏幕中心点
             let screenX = dot.x - state.cam.x + CX;
             let screenY = dot.y - state.cam.y + CY;
 
@@ -251,21 +288,14 @@
             ctx.fillText(dot.num, screenX, screenY);
         }
 
-        // --- 绘制吃豆人 ---
         let pacScreenX = state.pLogic.x - state.cam.x + CX;
         let pacScreenY = state.pLogic.y - state.cam.y + CY;
-        drawPacman(pacScreenX, pacScreenY, state.direction, state.status !== 'IDLE');
+        drawPacman(pacScreenX, pacScreenY, state.direction, state.status === 'DARTING');
 
-        // --- 绘制中心弹窗倒计时 ---
         if (state.status === 'HOLDING') {
             let elapsed = Date.now() - state.animStart;
             let p = elapsed / HOLD_TIME_MS;
-            if (p >= 1) {
-                state.status = 'RETURNING';
-                state.animStart = Date.now();
-            } else {
-                drawModalCountdown(p, targetDot.num);
-            }
+            drawModalCountdown(p, targetDot.num);
         }
 
         requestAnimationFrame(draw);
@@ -280,51 +310,50 @@
         if (isMoving) {
             mouthAngle = (Math.sin(Date.now() / 100) + 1) * 0.15 * Math.PI;
         } else {
-            mouthAngle = 0.15 * Math.PI; // 停歇时稍微张嘴
+            mouthAngle = 0.15 * Math.PI; 
         }
 
         ctx.beginPath();
+        ctx.moveTo(0, 0); 
         ctx.arc(0, 0, PACMAN_RADIUS, mouthAngle, Math.PI * 2 - mouthAngle);
-        ctx.lineTo(0, 0);
+        ctx.closePath(); 
         ctx.fillStyle = "#f1c40f"; 
         ctx.fill();
         ctx.strokeStyle = "#333";
         ctx.lineWidth = 2;
         ctx.stroke();
 
+        let isFacingLeft = Math.abs(dir) > Math.PI / 2;
+        let eyeY = isFacingLeft ? PACMAN_RADIUS / 2.5 : -PACMAN_RADIUS / 2.5;
+
         ctx.beginPath();
-        ctx.arc(0, -PACMAN_RADIUS/2.5, 3, 0, Math.PI * 2);
+        ctx.arc(0, eyeY, 3, 0, Math.PI * 2);
         ctx.fillStyle = "#000";
         ctx.fill();
         ctx.restore();
     }
 
-    // 绘制屏幕正中心的弹窗倒计时
     function drawModalCountdown(progress, num) {
         ctx.save();
         
-        // 绘制弹窗背景框
         let boxWidth = 240;
         let boxHeight = 260;
         let boxX = CX - boxWidth/2;
         let boxY = CY - boxHeight/2 - 20;
 
-        // 阴影与圆角矩形
         ctx.shadowColor = 'rgba(0,0,0,0.2)';
         ctx.shadowBlur = 15;
         ctx.fillStyle = "rgba(255, 255, 255, 0.95)";
         ctx.beginPath();
         ctx.roundRect(boxX, boxY, boxWidth, boxHeight, 15);
         ctx.fill();
-        ctx.shadowBlur = 0; // 重置阴影
+        ctx.shadowBlur = 0; 
 
-        // 文字
         ctx.fillStyle = "#333";
         ctx.font = "bold 22px 'Segoe UI'";
         ctx.textAlign = "center";
         ctx.fillText("保持该手势", CX, boxY + 40);
         
-        // 扇形倒计时外圈
         let fanCenterY = boxY + 140;
         let fanRadius = 60;
         ctx.beginPath();
@@ -335,20 +364,17 @@
         ctx.strokeStyle = "#ddd";
         ctx.stroke();
 
-        // 扇形填充
         ctx.beginPath();
         ctx.moveTo(CX, fanCenterY);
         ctx.arc(CX, fanCenterY, fanRadius, -Math.PI/2, -Math.PI/2 + (Math.PI * 2 * progress));
-        ctx.fillStyle = "#ff6b81"; // 红色扇形
+        ctx.fillStyle = "#ff6b81"; 
         ctx.fill();
 
-        // 中心覆盖一个小圆，变成环形或者更好看的样式
         ctx.beginPath();
         ctx.arc(CX, fanCenterY, fanRadius - 15, 0, Math.PI*2);
         ctx.fillStyle = "#fff";
         ctx.fill();
 
-        // 中心的手势数字
         ctx.fillStyle = "#333";
         ctx.font = "bold 32px Arial";
         ctx.textBaseline = "middle";
@@ -357,7 +383,6 @@
         ctx.restore();
     }
 
-    // 启动游戏
     initLevel();
     draw();
 

@@ -18,7 +18,7 @@ async def websocket_endpoint(websocket: WebSocket):
     
     # 如果文件不存在，先创建一个初始文件
     if not os.path.exists(file_path):
-        with open(file_path, "w") as f:
+        with open(file_path, "w", encoding="utf-8") as f:
             f.write("0")
 
     last_val = None
@@ -26,7 +26,8 @@ async def websocket_endpoint(websocket: WebSocket):
         while True:
             # 高频检测文件内容变化
             try:
-                with open(file_path, "r") as f:
+                #[修复] 加上 utf-8-sig，避免 Windows 编辑器保存带来的 BOM 字符导致 isdigit() 失败
+                with open(file_path, "r", encoding="utf-8-sig") as f:
                     content = f.read().strip()
                     # 只要内容是数字，且发生了变化，就推流给前端
                     if content and content.isdigit():
